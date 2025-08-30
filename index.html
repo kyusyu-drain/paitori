@@ -1,0 +1,1977 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <title>パイ取りゲーム</title>
+  <style>
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <script>
+    // ========================
+    // ==========定数==========
+    // ========================
+    const VERSION_TEXT = "ver1.1";
+
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    
+    // ステータス normal
+    const STAT_NORMAL = "normal";
+    // ステータス kasoku
+    const STAT_KASOKU = "kasoku";
+    // ステータス not_draw
+    const STAT_NOT_DRAW = "not_draw";
+    // ステータス die
+    const STAT_DIE = "die";
+    // ステータス attack
+    const STAT_ATTACK = "attack";
+    // ステータス damage
+    const STAT_DAMAGE = "damage";
+    // ステータス stop
+    const STAT_STOP = "stop";
+    // ステータス hissatu
+    const STAT_HISSATU = "hissatu";
+    
+    // 初期レベル
+    const FIRST_LEVEL = 30;
+    // AIプレイヤーの初期レベル
+    const FIRST_LEVEL_AI = 30;
+    // キーの強さ
+    const KEY_STRENGTH = 0.1;
+    // プレイヤーのスピード
+    const PLAYER_SPEED = 2;
+    // プレイヤーの最大加速
+    const PLAYER_MAX_ADD_SPEED = 5;
+    // プレイヤーの加速
+    const PLAYER_ADD_SPEED = 0.1;
+    // プレイヤーのwidth
+    const PLAYER_W = 384;
+    // プレイヤーのheight
+    const PLAYER_H = 256;
+    // エナジーのwidth
+    const ENERGY_W = 20;
+    // エナジーのheight
+    const ENERGY_H = 20;
+    // 画像ベースパス
+    const IMG_BASE_PATH = "./img/";
+    // おっぱいW
+    const OPPAI_W = 73;
+    // おっぱいH
+    const OPPAI_H = 79;
+    // おっぱい位置X
+    const OPPAI_X = 70;
+    // おっぱい位置Y
+    const OPPAI_Y = 20;
+    // おっぱい角度
+    const OPPAI_KAKUDO = 10;
+    // おっぱい拡大率
+    const OPPAI_SCALE_SIZE = 0.005;
+    // ゲームオーバー時の待機時間
+    const WAIT_TIME = 1000;
+    // フィールドのW
+    const FIELD_WIDTH = 2500;
+    // フィールドのH
+    const FIELD_HEIGHT = 2500;
+    // 攻撃位置X
+    const ATTACK_X = 0;
+    // 攻撃位置Y
+    const ATTACK_Y = -280;
+    // 攻撃W
+    const ATTACK_W = 400;
+    // 攻撃H
+    const ATTACK_H = 400;
+    // 必殺位置X
+    const HISSATU_X = 0;
+    // 必殺位置Y
+    const HISSATU_Y = -280;
+    // 必殺W
+    const HISSATU_W = 400;
+    // 必殺H
+    const HISSATU_H = 400;
+    // 攻撃範囲倍率
+    const ATTACK_SCALE_SIZE = 1;
+    // 攻撃画像名
+    const IMG_NAME_ATTACK = "attack";
+    // 攻撃時間
+    const ATTACK_TIME = 1000;
+    // 必殺時間
+    const HISSATU_TIME = 5000;
+    // 背景画像名
+    const BG_IMG_NAME = "bg.jpg";
+    // 背景画像W
+    const BG_W = 1000;
+    // 背景画像H
+    const BG_H = 1000;
+    // AIプレイヤーがプレイヤーに攻撃する距離
+    const DIS_AI_ATTACK = 300;
+    // AIプレイヤーがプレイヤーに攻撃に行く距離
+    const DIS_AI_MOVE_TO_PLAYER = 800;
+    // プレビュー位置X
+    const PREVIEW_X = -50;
+    // プレビュー位置Y
+    const PREVIEW_Y = 200;
+    // 一定時間毎の時間
+    const INTERVAL_TIME = 1000;
+    // ゲーム終了時間
+    const GAME_TIME = 180;
+    // エナジー生成時間間隔
+    const INTERVAL_TIME_ENERGY = 10;
+    // エナジー生成数
+    const ENERGY_CREATE_NUM = 50;
+    // 音声ファイルベースパス
+    const AUDIO_BASE_PATH = "audio/";
+    // ドレインの強さ
+    const DRAIN_LENGTH = 0.15;
+    // 最大バスト描画レベル
+    const MAX_VIEW_LEVEL = 100;
+    // 攻撃フォルダ名の末尾
+    const ATTACK_FOLDERNAME_TAIL = "_attackeff";
+    // エナジー取得音声名
+    const AUDIO_NAME_ENERGY_GET = "energy_get.mp3";
+    // 攻撃音声名
+    const AUDIO_NAME_ATTACK = "attack.wav";
+    // 必殺音声名
+    const AUDIO_NAME_HISSATU = "hissatu.wav";
+    // ダメージ音声名
+    const AUDIO_NAME_DAMAGE = "damage.wav";
+    // 死亡音声名
+    const AUDIO_NAME_DIE = "die.wav";
+    // 攻撃アニメーションgif遅延フレーム数
+    const ATTACK_GIF_TIEN_NUM = 3;
+    // 開始画面背景画像
+    const START_BG_FILENAME = "title.png";
+    // ゲーム勝利画面背景画像
+    const WIN_BG_FILENAME = "win.png";
+    // ゲームオーバー画面背景画像
+    const GAMEOVER_BG_FILENAME = "gameover.png";
+    // アイテム ストップ
+    const ITEM_STOP = "item_stop";
+    // アイテム ストップのストップする時間
+    const ITEM_STOP_TIME = 5000;
+    // アイテム ストップの生成時間間隔
+    const INTERVAL_TIME_ITEM_STOP = 3;
+    // アイテム ストップの生成確率
+    const CREATE_KAKURITU_ITEM_STOP = 3;
+    // アイテム ストップのwidth
+    const ITEM_STOP_W = 50;
+    // アイテム ストップのheight
+    const ITEM_STOP_H = 50;
+    // アイテム ストップの音声名
+    const AUDIO_NAME_ITEM_STOP_GET = "item_stop_get.mp3";
+    // アイテム ストップの生成数
+    const ITEM_STOP_CREATE_NUM = 1;
+    // Cookie クリア済みステージ数
+    const COOKIE_KEY_CLEAR_STAGE_NUM = "COOKIE_KEY_CLEAR_STAGE_NUM";
+    // Cookie プレイ可能キャラクター数
+    const COOKIE_KEY_ENABLE_CHARACTER_NUM = "COOKIE_KEY_ENABLE_CHARACTER_NUM";
+    // Cookie プレイ可能おっぱいタイプ数
+    const COOKIE_KEY_ENABLE_OPPAI_NUM = "COOKIE_KEY_ENABLE_OPPAI_NUM";
+    // 最大ステージ数
+    const MAX_STAGE_NUM = 4;
+    // 1ページあたりの表示キャラクター数
+    const VIEW_1PAGE_CHARACTER_NUM = 4;
+    // キャラクター選択画面背景画像
+    const SELECT_CHARACTER_BG_FILENAME = "select_character.png";
+    // ステージ選択画面背景画像
+    const SELECT_STAGE_BG_FILENAME = "select_stage.png";
+    // 選択時の音声ファイル名
+    const AUDIO_NAME_SELECT = "select.mp3";
+    // スタート時の音声ファイル名
+    const AUDIO_NAME_START = "launcher.mp3";
+    // 必殺技フォルダ名の末尾
+    const HISSATU_FOLDERNAME_TAIL = "_hissatueff";
+    // 必殺アニメーションgif遅延フレーム数
+    const HISSATU_GIF_TIEN_NUM = 0;
+    // 必殺可能レベル
+    const CAN_HISSATU_LEVEL = 100;
+    // 終了時アニメーションフレーム数
+    const FINISH_ANIME_FRAME_NUM = 100;
+    // 終了時アニメーション開始おっぱいレベル
+    const FINISH_START_OPPAI_LEVEL = 1;
+    // 終了時アニメーション終了おっぱいレベル
+    const FINISH_END_OPPAI_LEVEL = 100;
+    // 終了時キャラクター間隔
+    const FINISH_CHARA_INTERVAL_W = 300;
+    // 終了時アニメーション実行間隔
+    const FINISH_INTERVAL_TIME = 100;
+    // 終了時Effアニメーション実行間隔
+    const FINISH_EFF_INTERVAL_TIME = 10;
+    // 終了時必殺音声発音フレーム数
+    const FINISH_HISSATU_AUDIO_FRAME_NUM = 10;
+    // 終了時ダメージ音声発音フレーム間隔数
+    const FINISH_DAMAGE_AUDIO_FRAME_NUM = 10;
+    // アイテム アタック
+    const ITEM_ATTACK = "item_attack";
+    // アイテム アタックの生成時間間隔
+    const INTERVAL_TIME_ITEM_ATTACK = 3;
+    // アイテム アタックの生成確率
+    const CREATE_KAKURITU_ITEM_ATTACK = 3;
+    // アイテム アタックのwidth
+    const ITEM_ATTACK_W = 50;
+    // アイテム アタックのheight
+    const ITEM_ATTACK_H = 50;
+    // アイテム アタックの音声名
+    const AUDIO_NAME_ITEM_ATTACK_GET = "item_attack_get.mp3";
+    // アイテム アタックの生成数
+    const ITEM_ATTACK_CREATE_NUM = 1;
+    // アイテム アタックの初期回数
+    const ITEM_ATTACK_PLAYER_NUM = 7;
+    // アイテム アタックの敵の初期所持加算数
+    const ITEM_ATTACK_ENEMY_ADD_NUM = 3;
+    // バナー画像
+    const BANNER_SRC = "banner.png";
+    // バナー画像 W
+    const BANNER_W = 300;
+    // バナー画像 H
+    const BANNER_H = 100;
+    
+    
+    
+    
+    
+    // ==============================
+    // ==========プレイヤーデータ====
+    // ==============================
+    class PlayerData {
+      constructor() {
+        // クリア済みステージ数
+        this.clearStageNum = 0;
+        // プレイ可能キャラクター数
+        this.enableCharacterNum = 1;
+        // 選択されたステージ
+        this.selectedStage = 1;
+      }
+      
+      // 選択されたステージを設定
+      setSelectedStage(selectedStage) {
+        this.selectedStage = selectedStage;
+      }
+      
+      // Cookieからロードする
+      load() {
+        let cookieClearStageNum = loadCookie(COOKIE_KEY_CLEAR_STAGE_NUM);
+        if (cookieClearStageNum != "") {
+          this.clearStageNum = Number(cookieClearStageNum);
+        }
+        
+        let cookieEnableCharacterNum = loadCookie(COOKIE_KEY_ENABLE_CHARACTER_NUM);
+        if (cookieEnableCharacterNum != "") {
+          this.enableCharacterNum = Number(cookieEnableCharacterNum);
+        }
+      }
+      
+      // Cookieにセーブする
+      save(isClear) {
+        if (isClear) {
+          // クリア済みステージ数を更新
+          if (this.clearStageNum < this.selectedStage) {
+            // 増える場合だけ更新する
+            this.clearStageNum = this.selectedStage;
+          }
+
+          // プレイ可能キャラクターを追加
+          if (this.selectedStage < MAX_STAGE_NUM) {
+            if (this.enableCharacterNum < this.selectedStage + 1) {
+              // 増える場合だけ更新する
+              this.enableCharacterNum = this.selectedStage + 1;
+            }
+          }
+        }
+        
+        saveCookie(COOKIE_KEY_CLEAR_STAGE_NUM, this.clearStageNum);
+        saveCookie(COOKIE_KEY_ENABLE_CHARACTER_NUM, this.enableCharacterNum);
+      }
+
+      // ステージを取得
+      getStage() {
+        return new Stage(this.selectedStage);
+      }
+    }
+    
+    
+    
+    
+    
+    // ==============================
+    // ==========ステージ============
+    // ==============================
+    class Stage {
+      constructor(no) {
+        // 番号
+        this.no = no;
+      }
+      
+      // 敵AIプレイヤー配列を取得
+      getAIPlayerArr() {
+        let aiPlayerArr = new Array();
+        aiPlayerArr.push(crtStageBossPlayer(this.no));
+        
+        return aiPlayerArr;
+      }
+      
+      // エナジー生成数を取得
+      getEnergyNum() {
+        let energyNum = ENERGY_CREATE_NUM;
+        
+        switch(this.no) {
+          case 1:
+            energyNum = ENERGY_CREATE_NUM;
+            break;
+          case 2:
+            energyNum = ENERGY_CREATE_NUM * (3/5);
+            break;
+          case 3:
+            energyNum = ENERGY_CREATE_NUM / 2;
+            break;
+          case 4:
+            energyNum = ENERGY_CREATE_NUM / 2;
+            break;
+          default:
+            // ステージ1の値を設定
+            energyNum = ENERGY_CREATE_NUM;
+        }
+        
+        return energyNum;
+      }
+      
+      // 制限時間を取得
+      getTime() {
+        let time = GAME_TIME;
+        
+        switch(this.no) {
+          case 1:
+            time = GAME_TIME;
+            break;
+          case 2:
+            time = GAME_TIME;
+            break;
+          case 3:
+            time = GAME_TIME / 2;
+            break;
+          case 4:
+            time = GAME_TIME / 3;
+            break;
+          default:
+            // ステージ1の値を設定
+            time = GAME_TIME;
+        }
+        
+        return time;
+      }
+    }
+    
+    
+    
+    
+    
+    // ==============================
+    // ==========プレイヤー==========
+    // ==============================
+    class Player {
+      constructor(x, y, w, h, character, oppai_type, attack_gif_num, hissatu_gif_num) {
+        // X
+        this.x = x;
+        // Y
+        this.y = y;
+        // width
+        this.w = w;
+        // height
+        this.h = h;
+        // 方向
+        this.direction = 0;
+        // 女体レベル
+        this.level = FIRST_LEVEL;
+        // 攻撃可能回数
+        this.attacknum = ITEM_ATTACK_PLAYER_NUM;
+        // スピード
+        this.speed = PLAYER_SPEED;
+        // キャラクター
+        this.character = character;
+        // 画像
+        this.image = new Image();
+        // おっぱい左画像
+        this.image_oppai_l = new Image();
+        // おっぱい右画像
+        this.image_oppai_r = new Image();
+        // 攻撃画像
+        this.image_attack = new Image();
+        // ステータス (normal kasoku not_draw die attack damage hissatu)
+        this.stat = STAT_NORMAL;
+        // おっぱい種類
+        this.oppai_type = oppai_type;
+        // 攻撃gifアニメーションのフレーム数
+        this.attack_gif_num = attack_gif_num;
+        // 必殺gifアニメーションのフレーム数
+        this.hissatu_gif_num = hissatu_gif_num;
+        // 攻撃gifアニメーション
+        this.attack_gif = new GifAnimation(character + ATTACK_FOLDERNAME_TAIL, attack_gif_num, ATTACK_GIF_TIEN_NUM);
+        // 必殺技gifアニメーション
+        this.hissatu_gif = new GifAnimation(character + HISSATU_FOLDERNAME_TAIL, hissatu_gif_num, HISSATU_GIF_TIEN_NUM);
+        // キャラクター音声のプリロード
+        this.preLoadCharacterAudio(character);
+      }
+      
+      // 描画
+      draw(cameraX, cameraY) {
+        // ステータスがnot_drawの場合、描画しない
+        if (this.stat == STAT_NOT_DRAW) {
+          return;
+        }
+        
+        // 描画位置を算出
+        let screenX = this.x - cameraX;
+        let screenY = this.y - cameraY;
+        
+        // 角度を算出
+        let rad = getRad(this.direction, this.speed);
+        
+        // 体を描画
+        this.image.src = IMG_BASE_PATH + this.character + "/" + this.stat + ".png";
+        imgRotate(this.image, screenX, screenY, this.w, this.h, rad);
+        
+        // おっぱい左の描画位置を設定
+        let dis_left = Math.sqrt(Math.pow(OPPAI_X, 2) + Math.pow(OPPAI_Y, 2));
+        let oppai_x_left = screenX + (dis_left * Math.cos(this.direction + (OPPAI_KAKUDO * Math.PI / 180)));
+        let oppai_y_left = screenY + (dis_left * Math.sin(this.direction + (OPPAI_KAKUDO * Math.PI / 180)));
+        
+        // おっぱい右の描画位置を設定
+        let dis_right = Math.sqrt(Math.pow(OPPAI_X, 2) + Math.pow(OPPAI_Y, 2));
+        let oppai_x_right = screenX + (dis_right * Math.cos(this.direction + (-OPPAI_KAKUDO * Math.PI / 180)));
+        let oppai_y_right = screenY + (dis_right * Math.sin(this.direction + (-OPPAI_KAKUDO * Math.PI / 180)));
+        
+        // 女体レベルでおっぱい描画倍率を設定
+        let scale = this.level * OPPAI_SCALE_SIZE;
+        
+        // 最大サイズ以上は倍率を上げない
+        if (MAX_VIEW_LEVEL < this.level) {
+          scale = MAX_VIEW_LEVEL * OPPAI_SCALE_SIZE;
+        }
+        
+        // おっぱいを描画
+        this.image_oppai_l.src = IMG_BASE_PATH + this.oppai_type + "/l" + ".png";
+        this.image_oppai_r.src = IMG_BASE_PATH + this.oppai_type + "/r" + ".png";
+        oppaiImgRotateScale(this.image_oppai_r, oppai_x_left,  oppai_y_left, OPPAI_W * scale, OPPAI_H * scale, rad, scale);
+        oppaiImgRotateScale(this.image_oppai_l, oppai_x_right, oppai_y_right, OPPAI_W * scale, OPPAI_H * scale, rad, scale);
+        
+        if (this.stat == STAT_ATTACK) {
+          // 攻撃中は攻撃を描画
+          this.drawAttack();
+        } else if (this.stat == STAT_HISSATU) {
+          // 必殺中は何も描画しない
+        } else {
+          // gifアニメーションのindexをリセット
+          this.attack_gif.resetIndex();
+        }
+      }
+      
+      // 動く
+      move() {
+        // 加速中は加速する
+        if (this.stat == STAT_KASOKU && this.speed < (PLAYER_SPEED + PLAYER_MAX_ADD_SPEED)) {
+          this.speed += PLAYER_ADD_SPEED;
+        }
+        
+        // 加速中でない場合は減速する
+        if (this.stat != STAT_KASOKU && PLAYER_SPEED < this.speed) {
+          this.speed -= PLAYER_ADD_SPEED;
+        }
+        
+        this.x = this.x + Math.cos(this.direction) * this.speed;
+        this.y = this.y + Math.sin(this.direction) * this.speed;
+      }
+      
+      // 攻撃を描画
+      drawAttack() {
+        // 描画位置を算出
+        let screenX = this.x - cameraX;
+        let screenY = this.y - cameraY;
+        
+        // 角度を算出
+        // 攻撃画像はあらかじめ90度回転させておく
+        let rad = getRad(this.direction + (90 * Math.PI / 180), this.speed);
+        
+        // 位置を設定
+        let attack_dis = Math.sqrt(Math.pow(ATTACK_X, 2) + Math.pow(ATTACK_Y, 2));
+        let attack_x = screenX + (attack_dis * Math.cos(this.direction));
+        let attack_y = screenY + (attack_dis * Math.sin(this.direction));
+        
+        // 描画
+        this.image_attack = new Image();
+        this.image_attack.src = this.attack_gif.getSrc();
+        imgRotateScale(this.image_attack, attack_x,  attack_y, ATTACK_W * 1, ATTACK_H * 1, rad, 1);
+      }
+      
+      // キャラクター音声のプリロード
+      preLoadCharacterAudio(character) {
+        preLoadAudio(character + "/" + AUDIO_NAME_ATTACK);
+        preLoadAudio(character + "/" + AUDIO_NAME_DAMAGE);
+        preLoadAudio(character + "/" + AUDIO_NAME_DIE);
+        preLoadAudio(character + "/" + AUDIO_NAME_HISSATU);
+      }
+
+      // 必殺が可能かどうか
+      canHissatu() {
+        if (CAN_HISSATU_LEVEL < this.level) {
+          return true;
+        }
+
+        return false;
+      }
+
+      // クローン
+      clone() {
+        return new Player(this.x, this.y, this.w, this.h, this.character, this.oppai_type, this.attack_gif_num, this.hissatu_gif_num)
+      }
+    }
+    
+    
+    
+    
+    
+    // ==============================
+    // ==========AIプレイヤー==========
+    // ==============================
+    class AIPlayer extends Player {
+      constructor(x, y, w, h, character, oppai_type, attack_gif_num, hissatu_gif_num, isBoss) {
+        super(x, y, w, h, character, oppai_type, attack_gif_num, hissatu_gif_num);
+        
+        // 女体レベル
+        // 敵は女体レベルを多くする
+        this.level = FIRST_LEVEL_AI;
+
+        // 速度
+        // 敵は速度を遅くする
+        this.speed -= 1;
+        
+        // ボスかどうか
+        this.isBoss = isBoss;
+        
+        // 攻撃後待機フレーム数
+        // 連続攻撃を防ぐため、攻撃後はしばらく何もしない
+        this.attackWaitFrame = 0;
+        
+        // 攻撃可能回数
+        // 敵は攻撃可能回数を増やす
+        this.attacknum += ITEM_ATTACK_ENEMY_ADD_NUM;
+      }
+      
+      // 動く
+      move() {
+        // ストップ中は何もしない
+        if (this.stat == STAT_STOP) {
+          return;
+        }
+
+        // 攻撃直後は何もしない
+        // = 攻撃後待機フレーム数が0より大きい場合は何もしない
+        if (0 < this.attackWaitFrame) {
+          this.attackWaitFrame -= 1;
+          return;
+        }
+        
+        if (this.stat != STAT_NOT_DRAW) {
+          // 基本はエナジーを取りに行く
+          // プレイヤーとの距離が一定以下、かつ攻撃可能回数が0より大きければプレイヤーに向かう
+          let dis = Math.sqrt(Math.pow(this.x - player.x, 2) + Math.pow(this.y - player.y, 2));
+          if (dis < DIS_AI_MOVE_TO_PLAYER && 0 < this.attacknum) {
+            this.moveToPlayer();
+          } else {
+            this.stat = STAT_NORMAL;
+            this.moveGetEnergy();
+          }
+        }
+        
+        this.x = this.x + Math.cos(this.direction) * this.speed;
+        this.y = this.y + Math.sin(this.direction) * this.speed;
+      }
+      
+      // エナジーを取りに行く
+      moveGetEnergy() {
+        this.stat = STAT_NORMAL;
+        
+        // 最寄りのエナジーを見つける
+        let minDisIdx = -1;
+        for (let i = 0; i < energyArr.length; i++) {
+          let minDis = FIELD_WIDTH * 2;
+          
+          let dis = Math.sqrt(Math.pow(this.x - energyArr[i].x, 2) + Math.pow(this.y - energyArr[i].y, 2));
+          if (dis < minDis) {
+            minDisIdx = i;
+          }
+        }
+        
+        // 最寄りのエナジーに向きを変える
+        if (minDisIdx != -1) {
+          this.direction = Math.atan2(energyArr[minDisIdx].y - this.y, energyArr[minDisIdx].x - this.x);
+        }
+      }
+      
+      // プレイヤーを倒しに行く
+      moveToPlayer() {
+        // プレイヤーの方向に向きを変える
+        this.direction = Math.atan2(player.y - this.y, player.x - this.x);
+        
+        // プレイヤーとの距離が一定以下であれば攻撃する
+        let dis = Math.sqrt(Math.pow(this.x - player.x, 2) + Math.pow(this.y - player.y, 2));
+        if (dis < DIS_AI_ATTACK) {
+          // 攻撃可能回数が0より大きい場合だけ攻撃する
+          if (0 < this.attacknum) {
+            this.stat = STAT_ATTACK;
+
+            // 攻撃可能回数を減らす
+            this.attacknum -= 1;
+
+            // 攻撃後待機フレーム数を設定
+            this.attackWaitFrame = this.attack_gif_num * ATTACK_GIF_TIEN_NUM;
+          }
+        } else {
+          this.stat = STAT_NORMAL;
+        }
+      }
+    }
+    
+    
+    
+    
+    
+    // ==============================
+    // ==========エナジー==========
+    // ==============================
+    class Energy {
+      constructor(x, y, w, h, type) {
+        // X
+        this.x = x;
+        // Y
+        this.y = y;
+        // width
+        this.w = w;
+        // height
+        this.h = h;
+        // 方向
+        this.direction = 0;
+        // タイプ
+        this.type = type;
+        // 画像
+        this.image = new Image();
+        // ステータス
+        this.stat = STAT_NORMAL;
+      }
+      
+      // 描画
+      draw(cameraX, cameraY) {
+        // ステータスがnormalでない場合は何もしない
+        if (this.stat != STAT_NORMAL) {
+          return;
+        }
+        
+        // 描画位置を算出
+        screenX = this.x - cameraX;
+        screenY = this.y - cameraY;
+        
+        this.image.src = IMG_BASE_PATH + this.type + ".png";
+        let rad = getRad(this.direction, 0);
+        imgRotate(this.image, screenX, screenY, this.w, this.h, rad);
+      }
+    }
+    
+    
+    
+    
+    
+    // ========================
+    // ==========更新==========
+    // ========================
+    function update() {
+      // プレイヤー移動処理
+      player.move();
+      
+      // AIプレイヤー移動処理
+      for (let k = 0; k < playerAiArr.length; k++) {
+        playerAiArr[k].move();
+      }
+      
+      // エナジー取得処理
+      for (let i = 0; i < energyArr.length; i++) {
+        // プレイヤーのエナジー取得処理(ステータス：normal kasoku not_draw die attack damage hissatu)
+        if (energyArr[i].stat != STAT_NOT_DRAW && (player.stat != STAT_DIE) && checkRectCollision(player, energyArr[i])) {
+          if (energyArr[i].type == ITEM_STOP) {
+            // アイテム「ストップ」の場合
+
+            // 一定時間、敵全員の動きを止める
+            for (let o = 0; o < playerAiArr.length; o++) {
+              playerAiArr[o].stat = STAT_STOP;
+            }
+            
+            // エナジーのステータスをnot_drawに変更
+            energyArr[i].stat = STAT_NOT_DRAW;
+            
+            // 効果音再生
+            playAudio(AUDIO_NAME_ITEM_STOP_GET);
+            
+            // 一定時間後に敵全員のステータスをnormalにする
+            // requestAnimationFrameを利用しているため時間がズレるが気にしない
+            window.setTimeout(function() {
+              for (let n = 0; n < playerAiArr.length; n++) {
+                playerAiArr[n].stat = STAT_NORMAL;
+              }
+              
+            }, ITEM_STOP_TIME);
+          } else if (energyArr[i].type == ITEM_ATTACK) {
+            // アイテム「攻撃玉」の場合
+            // 攻撃可能ポイントを増やす
+            player.attacknum += 1;
+
+            // エナジーのステータスをnot_drawに変更
+            energyArr[i].stat = STAT_NOT_DRAW;
+
+            // 効果音再生
+            playAudio(AUDIO_NAME_ITEM_ATTACK_GET);
+          } else {
+            // 女体レベルをアップ
+            player.level = player.level + 1;
+            
+            // エナジーのステータスをnot_drawに変更
+            energyArr[i].stat = STAT_NOT_DRAW;
+            
+            // 効果音再生
+            playAudio(AUDIO_NAME_ENERGY_GET);
+          }
+        }
+        
+        // AIのエナジー取得処理(ステータス：normal kasoku not_draw die attack damage hissatu)
+        for (let j = 0; j < playerAiArr.length; j++) {
+          if (energyArr[i].stat != STAT_NOT_DRAW && (playerAiArr[j].stat != STAT_DIE) && checkRectCollision(playerAiArr[j], energyArr[i])) {
+            if (energyArr[i].type == ITEM_ATTACK) {
+              // アイテム「攻撃玉」の場合
+              // 攻撃可能ポイントを増やす
+              playerAiArr[j].attacknum += 1;
+
+              // エナジーのステータスをnot_drawに変更
+              energyArr[i].stat = STAT_NOT_DRAW;
+            } else {
+              // 女体レベルをアップ
+              playerAiArr[j].level = playerAiArr[j].level + 1;
+              
+              // エナジーのステータスをnot_drawに変更
+              energyArr[i].stat = STAT_NOT_DRAW;
+            }
+          }
+        }
+      }
+      
+      // プレイヤーのはみ出し処理
+      if (checkHamidasi(player)) {
+        // ステータスを死亡にする
+        player.stat = STAT_DIE;
+        
+        // ゲームオーバー処理
+        gameover();
+      }
+      
+      // 攻撃被弾処理
+      for (let m = 0; m < playerAiArr.length; m++) {
+        // 敵がプレイヤーの攻撃を被弾
+        if (player.stat == STAT_ATTACK && checkAttackCollision(player, playerAiArr[m])) {
+          // 死亡またはnot_draw時は何もしない
+          if (playerAiArr[m].stat == STAT_DIE || playerAiArr[m].stat == STAT_NOT_DRAW) {
+            break;
+          }
+
+          // レベルドレイン
+          if (0 < playerAiArr[m].level) {
+            playerAiArr[m].level -= DRAIN_LENGTH;
+            player.level += DRAIN_LENGTH;
+
+            // ダメージ音再生
+            playAudio(playerAiArr[m].character + "/" + AUDIO_NAME_DAMAGE);
+            
+            // ステータスを被弾に変更
+            playerAiArr[m].stat = STAT_DAMAGE;
+          } else {
+            // ステータスを死亡にする
+            playerAiArr[m].stat = STAT_DIE;
+          
+            // AIプレイヤーのゲームオーバー
+            gameoverAi(playerAiArr[m]);
+          }
+        }
+        
+        // プレイヤーが敵の攻撃を被弾
+        if (playerAiArr[m].stat == STAT_ATTACK && checkAttackCollision(playerAiArr[m], player)) {
+          if (0 < player.level) {
+            // レベルドレイン
+            playerAiArr[m].level += DRAIN_LENGTH;
+            player.level -= DRAIN_LENGTH;
+            
+            // ダメージ音再生
+            playAudio(player.character + "/" + AUDIO_NAME_DAMAGE);
+            
+            // ステータスを被弾に変更
+            player.stat = STAT_DAMAGE;
+          } else {
+            // ステータスを死亡にする
+            player.stat = STAT_DIE;
+          
+            // ゲームオーバー処理
+            gameover();
+          }
+        }
+      }
+    }
+    
+    
+    
+    
+    
+    // ========================
+    // ==========描画==========
+    // ========================
+    function draw() {
+      // カメラ位置算出
+      cameraX = player.x - canvas.width / 2;
+      cameraY = player.y - canvas.height / 2;
+      
+      // 全消去
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // 背景画像
+      bgImg.src = IMG_BASE_PATH + BG_IMG_NAME;
+      let bg_rocal = FIELD_WIDTH / BG_W;
+      imgRotateScale(bgImg, FIELD_WIDTH / 2 - cameraX, FIELD_HEIGHT / 2 - cameraY, FIELD_WIDTH, FIELD_HEIGHT, 0, bg_rocal);
+      
+      // プレイヤー
+      player.draw(cameraX, cameraY);
+      
+      // エナジー
+      for (let i = 0; i < energyArr.length; i++) {
+        energyArr[i].draw(cameraX, cameraY);
+      }
+      
+      // AI
+      for (let j = 0; j < playerAiArr.length; j++) {
+        playerAiArr[j].draw(cameraX, cameraY);
+      }
+      
+      // スコア
+      drawScore(player);
+    }
+    
+    
+    
+    
+    
+    // ==============================
+    // ==========ゲーム処理==========
+    // ==============================
+    function gameLoop(time) {
+      update();
+      draw();
+      
+      // 一定時間毎に処理を実行する
+      if (INTERVAL_TIME < time - tmpTime) {
+        tmpTime = time;
+        intervalFnc();
+      }
+      
+      // setTimeoutでなくrequestAnimationFrameを利用する
+      gameLoopTimer = requestAnimationFrame(gameLoop);
+    }
+    
+    
+    
+    
+    
+    // ==============================
+    // ==========実行する処理========
+    // ==============================
+    // プレイヤーデータ
+    let playerData = new PlayerData();
+    playerData.load();
+
+    // 共通音声のプリロード
+    preLoadAudio(AUDIO_NAME_ENERGY_GET);
+    preLoadAudio(AUDIO_NAME_SELECT);
+    preLoadAudio(AUDIO_NAME_START);
+    preLoadAudio(AUDIO_NAME_ITEM_STOP_GET);
+    preLoadAudio(AUDIO_NAME_ITEM_ATTACK_GET);
+    
+    // ゲーム時間
+    let gameTime = playerData.getStage().getTime();
+    
+    // 経過時間計測のための一時保存用時間
+    let tmpTime = INTERVAL_TIME;
+    
+    // キー有効フラグ
+    let KEY_ENABLED = false;
+    
+    // カメラ位置X
+    let cameraX = 0;
+    // カメラ位置Y
+    let cameraY = 0;
+    
+    // 背景画像
+    let bgImg = new Image();
+    // エナジー配列
+    let energyArr = new Array();
+    // AIプレイヤー配列
+    let playerAiArr = new Array();
+    
+    // ゲームループのタイマー
+    let gameLoopTimer = 0;
+    
+    // 開始画面を描画
+    viewStart();
+    
+    
+    
+    
+    
+    // ================================
+    // ==========キーイベント==========
+    // ================================
+    document.addEventListener("keydown", e => {
+      if (!KEY_ENABLED) return;
+
+      // 既に攻撃中の場合は何もしない
+      if (player.stat == STAT_ATTACK) {
+        return;
+      }
+
+      // 敵が全員死んでいる、または自分が死んでいる、または自分が非表示の場合は何もしない
+      if (player.stat == STAT_DIE || player.stat == STAT_NOT_DRAW || isAllEnemyDieOrNotDraw()) {
+        return;
+      }
+      
+      if (e.key === "ArrowLeft") player.direction -= KEY_STRENGTH;
+      if (e.key === "ArrowRight") player.direction += KEY_STRENGTH;
+      
+      // スペースキーで加速
+      if (e.key === " ") {
+        player.stat = STAT_KASOKU;
+      }
+      
+      // エンターキーで攻撃
+      if (e.key === "Enter") {
+        // 攻撃可能回数が0の場合は何もしない
+        if (player.attacknum == 0) {
+          return;
+        }
+
+        // 攻撃可能回数を減らす
+        player.attacknum -= 1;
+
+        player.stat = STAT_ATTACK;
+        
+        // 攻撃音再生
+        playAudio(player.character + "/" + AUDIO_NAME_ATTACK);
+        
+        // 一定時間後にステータスをnormalにする
+        // requestAnimationFrameを利用しているため時間がズレるが気にしない
+        window.setTimeout(function(){
+          player.stat = STAT_NORMAL;
+        }, ATTACK_TIME);
+      }
+    });
+    document.addEventListener("keyup", e => {
+      if (!KEY_ENABLED) return;
+      
+      // 攻撃中または必殺中の場合は何もしない
+      if (player.stat == STAT_ATTACK) {
+        return;
+      }
+      
+      player.stat = STAT_NORMAL;
+      player.speed = PLAYER_SPEED;
+    });
+    
+    
+    
+    
+    
+    // ============================
+    // ==========開始画面描画======
+    // ============================
+    function viewStart() {
+      // キー操作を無効化
+      KEY_ENABLED = false;
+      
+      // ゲーム開始画面を描画
+      crtGamestartHtml();
+    }
+    
+    
+    
+    
+    
+    // ============================
+    // ==========一定時間毎の処理==
+    // ============================
+    function intervalFnc() {
+      // 敵を全員倒したら勝利
+      if (isAllEnemyNotDraw()) {
+        gamewin();
+        return;
+      }
+
+      gameTime -= 1;
+      
+      // 一定時間経過でゲームオーバー
+      if (gameTime <= 0) {
+        gameover();
+      }
+      
+      // 一定時間毎にエナジーを生成
+      if (gameTime % INTERVAL_TIME_ENERGY == 0) {
+        createEnergy(0, 0, FIELD_WIDTH, FIELD_HEIGHT, ENERGY_W, ENERGY_H, playerData.getStage().getEnergyNum(), "energy_1");
+      }
+      
+      // 一定時間毎に一定確率でアイテムを生成
+      if (gameTime % INTERVAL_TIME_ITEM_STOP == 0) {
+        let ransu = Math.floor( Math.random() * (CREATE_KAKURITU_ITEM_STOP - 0) ) + 0;
+        if (ransu == 1) {
+          // STOP
+          createEnergy(0, 0, FIELD_WIDTH, FIELD_HEIGHT, ITEM_STOP_W, ITEM_STOP_H, ITEM_STOP_CREATE_NUM, ITEM_STOP);
+          // ATTACK
+          createEnergy(0, 0, FIELD_WIDTH, FIELD_HEIGHT, ITEM_ATTACK_W, ITEM_ATTACK_H, ITEM_ATTACK_CREATE_NUM, ITEM_ATTACK);
+        }
+      }
+    }
+    
+    
+    
+    
+    
+    // ============================
+    // ==========ゲーム開始========
+    // ============================
+    function execGame(playerIdx) {
+      // 開始画面を消す
+      let start_div = document.getElementById("start_div");
+      start_div.remove();
+      
+      // キャンパスを表示
+      const canvas = document.getElementById("game");
+      canvas.style.display = "block";
+      
+      // キー操作を有効化
+      KEY_ENABLED = true;
+      
+      // ゲーム画面を生成
+      // CSS
+      let styleSheet = new CSSStyleSheet();
+      styleSheet.replaceSync("html, body { margin: 0; overflow: hidden; } canvas { display: block; }");
+      document.adoptedStyleSheets = [styleSheet];
+      // canvas
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      
+      // 初期化
+      init(playerIdx);
+      
+      // ゲーム実行
+      gameLoop();
+    }
+    
+    
+    
+    
+    
+    // ================================
+    // ==========ゲームオーバー========
+    // ================================
+    function gameover() {
+      // キー操作を無効化
+      KEY_ENABLED = false;
+      
+      // 一定時間後にゲームオーバー画面を描画
+      // requestAnimationFrameを利用しているため時間がズレるが気にしない
+      window.setTimeout(function(){
+        cancelAnimationFrame(gameLoopTimer);
+        
+        // ゲーム画面を非表示
+        let element_canvas = document.getElementById("game");
+        element_canvas.style.display = "none";
+        
+        // すでに終了画面が描画されているかチェックする
+        if (!document.getElementById("start_div")) {
+          // プレイヤーデータをセーブ
+          playerData.save(false);
+          // ゲームオーバー画面を生成
+          crtGameFinishHtml(false);
+        }
+      }, WAIT_TIME);
+    }
+    
+    
+    
+    
+    
+    // ================================
+    // ==========ゲーム勝利=============
+    // ================================
+    function gamewin() {
+      // キー操作を無効化
+      KEY_ENABLED = false;
+      
+      cancelAnimationFrame(gameLoopTimer);
+      
+      // ゲーム画面を非表示
+      let element_canvas = document.getElementById("game");
+      element_canvas.style.display = "none";
+      
+      // すでに終了画面が描画されているかチェックする
+      if (!document.getElementById("start_div")) {
+        // プレイヤーデータをセーブ
+        playerData.save(true);
+        // ゲーム勝利画面を生成
+        crtGameFinishHtml(true);
+      }
+    }
+    
+    
+    
+    
+    
+    // ==============================
+    // ==========初期化処理==========
+    // ==============================
+    function init(playerIdx) {
+      // プレイヤーデータ
+      playerData.load();
+
+      // 共通音声のプリロード
+      preLoadAudio(AUDIO_NAME_ENERGY_GET);
+      preLoadAudio(AUDIO_NAME_SELECT);
+      preLoadAudio(AUDIO_NAME_START);
+      preLoadAudio(AUDIO_NAME_ITEM_STOP_GET);
+      preLoadAudio(AUDIO_NAME_ITEM_ATTACK_GET);
+      
+      // ゲーム時間
+      gameTime = playerData.getStage().getTime();
+      
+      // 経過時間計測のための一時保存用時間
+      tmpTime = INTERVAL_TIME;
+      
+      // カメラ位置X
+      cameraX = 0;
+      // カメラ位置Y
+      cameraY = 0;
+      
+      // 背景画像
+      bgImg = new Image();
+      // エナジー配列
+      energyArr = new Array();
+      // AIプレイヤー配列
+      playerAiArr = new Array();
+      
+      // ゲームループのタイマーをクリア
+      cancelAnimationFrame(gameLoopTimer);
+      
+      // プレイヤー生成
+      player = crtStagePlayer(playerIdx);
+      
+      // 選択されたステージによって生成するエナジーとAIプレイヤーを変更する
+      // エナジー生成
+      createEnergy(0, 0, FIELD_WIDTH, FIELD_HEIGHT, ENERGY_W, ENERGY_H, playerData.getStage().getEnergyNum(), "energy_1");
+      // AIプレイヤー生成
+      playerAiArr = playerData.getStage().getAIPlayerArr();
+    }
+    
+    
+    
+    
+    
+    // ==============================
+    // ==========gifアニメーション===
+    // ==============================
+    class GifAnimation {
+      constructor(basename, frameNum, tienFrameNum) {
+        // basename
+        this.basename = basename;
+        // フレーム数
+        this.frameNum = frameNum;
+        // 遅延フレーム数(0で遅延なし)
+        this.tienFrameNum = tienFrameNum;
+        // index
+        this.index = 1;
+        // 遅延数
+        this.tienNum = 0;
+      }
+      
+      // srcを取得
+      getSrc() {
+        // (例) ./img/basename名のフォルダ/1.png
+        let src = IMG_BASE_PATH + this.basename + "/" + this.index + ".png";
+        
+        if (this.tienFrameNum <= this.tienNum) {
+          // 遅延数が遅延フレーム数より大きくなったらindexを加算する
+          this.tienNum = 0;
+          this.index += 1;
+          
+          // フレーム数をオーバーしていた場合はリセット
+          if (this.frameNum < this.index) {
+            this.index = 1;
+          }
+        } else {
+          // 遅延数が遅延フレーム数になるまで加算する
+          this.tienNum += 1;
+        }
+        
+        return src;
+      }
+      
+      // indexをリセットする
+      resetIndex() {
+        this.index = 1;
+      }
+    }
+    
+    
+    
+    
+    
+    // ================================
+    // ==========ユーティリティ========
+    // ================================
+    // ==========
+    // ラジアンを取得
+    // ==========
+    function getRad(direction, speed) {
+      let vx = Math.cos(direction) * speed;
+      let vy = Math.sin(direction) * speed;
+      let rad = Math.atan2(vy, vx);
+      
+      return rad;
+    }
+    
+    // ==========
+    // 画像を回転
+    // https://tsujimotter.hatenablog.com/entry/2013/11/29/035927
+    // ==========
+    function imgRotate(img, x, y, w, h, rad){
+      // canvasの状態を一度保存
+      ctx.save();
+      // 原点を移動
+      ctx.translate(x, y);
+      // 回転
+      ctx.rotate(rad);
+      // 画像の縦横半分の位置へtranslate
+      ctx.translate(-w/2, -h/2);
+      // 読み込んだimgをcanvasに貼付け
+      ctx.drawImage(img, 0, 0);
+      // canvasの状態を元に戻す
+      ctx.restore();
+    }
+    
+    // ==========
+    // 画像を回転して拡大縮小
+    // ==========
+    function imgRotateScale(img, x, y, w, h, rad, scale){
+      // canvasの状態を一度保存
+      ctx.save();
+      // 原点を移動
+      ctx.translate(x, y);
+      // 回転
+      ctx.rotate(rad);
+      // 画像の縦横半分の位置へtranslate
+      ctx.translate(-w/2, -h/2);
+      // 拡大縮小
+      ctx.scale(scale, scale);
+      // 読み込んだimgをcanvasに貼付け
+      ctx.drawImage(img, 0, 0);
+      // canvasの状態を元に戻す
+      ctx.restore();
+    }
+    
+    // ==========
+    // おっぱい画像を回転して拡大縮小
+    // ==========
+    function oppaiImgRotateScale(img, x, y, w, h, rad, scale){
+      // canvasの状態を一度保存
+      ctx.save();
+      // 原点を移動
+      ctx.translate(x, y);
+      // 回転
+      ctx.rotate(rad);
+      // 画像の縦横半分の位置へtranslate
+      ctx.translate(-w, -h/2);
+      // 拡大縮小
+      ctx.scale(scale, scale);
+      // 読み込んだimgをcanvasに貼付け
+      ctx.drawImage(img, 0, 0);
+      // canvasの状態を元に戻す
+      ctx.restore();
+    }
+    
+    // ==========
+    // 四角形の当たり判定
+    // ==========
+    function checkRectCollision(rect1, rect2) {
+      if (Math.abs(rect2.x - rect1.x) <= ((rect1.w / 2) + (rect2.w / 2))) {
+        if (Math.abs(rect2.y - rect1.y) <= ((rect1.h / 2) + (rect2.h / 2))) {
+          return true;
+        }
+      }
+      
+      return false;
+    }
+    
+    // ==========
+    // はみ出し判定
+    // ==========
+    function checkHamidasi(target) {
+      // ステータスが必殺の場合は無効
+      if (player.stat == STAT_HISSATU) {
+        return false;
+      }
+
+      if (target.x < 0 || FIELD_WIDTH < target.x) {
+        return true;
+      }
+      if (target.y < 0 || FIELD_HEIGHT < target.y) {
+        return true;
+      }
+      
+      return false;
+    }
+    
+    // ==========
+    // スコア描画
+    // ==========
+    function drawScore(player) {
+      ctx.font = "20px serif";
+      
+      // 残り時間・レベル・攻撃可能回数
+      let str_center = "time :" + String(gameTime) + "\n";
+      str_center +=    "level:" + String(Math.round(player.level)) + "\n";
+      str_center +=    "Drain Attack Energy :" + String(player.attacknum);
+      ctx.fillStyle = "orange";
+      ctx.textAlign = "left";
+      fillTextLine(ctx, str_center, canvas.width / 2, 30);
+      
+      // 操作説明
+      let str = "level:" + String(player.level) + "\n";
+      str +=    " ←   : Rotate left" + "\n";
+      str +=    " →   : Rotate right" + "\n";
+      str +=    "Space: Accelerate" + "\n";
+      str +=    "Enter: Drain" + "\n";
+      ctx.fillStyle = "orange";
+      ctx.textAlign = "left";
+      fillTextLine(ctx, str, 10, 0);
+
+      // ==================================================
+      // バナー
+      // 削除禁止でお願いします。
+      // ==================================================
+      let banner = new Image();
+      banner.src = IMG_BASE_PATH + BANNER_SRC;
+      ctx.drawImage(banner, canvas.width - BANNER_W, 5);
+    }
+    
+    // ==========
+    // エナジーを生成
+    // 指定した範囲内で指定した数だけ生成する
+    // ==========
+    function createEnergy(x1, y1, x2, y2, w, h, num, type) {
+      for (let i = 0; i < num; i++) {
+        let random_x = Math.floor( Math.random() * (x2 - x1) ) + x1;
+        let random_y = Math.floor( Math.random() * (y2 - y1) ) + y1;
+        energyArr.push(new Energy(random_x, random_y, w, h, type));
+      }
+    }
+    
+    // ==========
+    // 攻撃の当たり判定
+    // ==========
+    function checkAttackCollision(attacker, target) {
+      let attack_dis = Math.sqrt(Math.pow(ATTACK_X, 2) + Math.pow(ATTACK_Y, 2));
+      let attack_x = attacker.x + attack_dis * Math.cos(attacker.direction);
+      let attack_y = attacker.y + attack_dis * Math.sin(attacker.direction);
+      
+      if (Math.abs(target.x - attack_x) <= ((ATTACK_W / 2) + (target.w / 2))) {
+        if (Math.abs(target.y - attack_y) <= ((ATTACK_H / 2) + (target.h / 2))) {
+          return true;
+        }
+      }
+      
+      return false;
+    }
+
+    // ==========
+    // 必殺の当たり判定
+    // ==========
+    function checkHissatuCollision(attacker, target) {
+      let hissatu_dis = Math.sqrt(Math.pow(HISSATU_X, 2) + Math.pow(HISSATU_Y, 2));
+      let hissatu_x = attacker.x + hissatu_dis * Math.cos(attacker.direction);
+      let hissatu_y = attacker.y + hissatu_dis * Math.sin(attacker.direction);
+      
+      if (Math.abs(target.x - hissatu_x) <= ((HISSATU_W / 2) + (target.w / 2))) {
+        if (Math.abs(target.y - hissatu_y) <= ((HISSATU_H / 2) + (target.h / 2))) {
+          return true;
+        }
+      }
+      
+      return false;
+    }
+    
+    // ==========
+    // AIプレイヤーのゲームオーバー処理
+    // ==========
+    function gameoverAi(playerAi) {
+      // 一定時間後に描画しないようステータスを変更する
+      // requestAnimationFrameを利用しているため時間がズレるが気にしない
+      window.setTimeout(function(){
+        playerAi.stat = STAT_NOT_DRAW;
+      }, WAIT_TIME);
+    }
+    
+    // ==========
+    // ゲーム開始画面生成
+    // ==========
+    function crtGamestartHtml() {
+      // キャンバスを非表示
+      let e_canvas = document.getElementById("game");
+      e_canvas.style.display = "none";
+      
+      let e_div = document.createElement("div");
+      e_div.setAttribute("id", "start_div");
+      e_div.style.cssText = 'background-image: url("' + IMG_BASE_PATH + START_BG_FILENAME + '");width:600px;height:600px;';
+      
+      let e_input = document.createElement("input");
+      e_input.setAttribute("id", "start_btn");
+      e_input.setAttribute("type", "button");
+      e_input.setAttribute("value", "PLAY START");
+      e_input.setAttribute("onclick", "playAudio(AUDIO_NAME_SELECT);crtSelectStageHtml();");
+      e_input.style.cssText = "position: absolute;top:320px;left:200px;width:200px;height:50px;";
+      e_div.appendChild(e_input);
+
+      let e_input_howto = document.createElement("input");
+      e_input_howto.setAttribute("id", "howto_btn");
+      e_input_howto.setAttribute("type", "button");
+      e_input_howto.setAttribute("value", "how to play");
+      e_input_howto.setAttribute("onclick", "window.open('https://kyusyudrain.com/index_paitori.html', '_blank');");
+      e_input_howto.style.cssText = "position: absolute;top:320px;left:410px;width:100px;height:30px;";
+      e_div.appendChild(e_input_howto);
+
+      let e_banner_div = document.createElement("div");
+      e_banner_div.style.cssText = "position: absolute;top:15px;left:400px;";
+      let e_banner_link = document.createElement("a");
+      e_banner_link.setAttribute("href", "https://kyusyudrain.com");
+      e_banner_link.setAttribute("target", "_blank");
+      let e_banner_img = document.createElement("img");
+      e_banner_img.setAttribute("src", IMG_BASE_PATH + BANNER_SRC);
+      e_banner_img.style.cssText = "width:200px;";
+      e_banner_link.appendChild(e_banner_img);
+      e_banner_div.appendChild(e_banner_link);
+      e_div.appendChild(e_banner_div);
+
+      let e_ver_text = document.createElement("p");
+      e_ver_text.setAttribute("id", "version_text");
+      e_ver_text.style.cssText = "position: absolute;top:340px;left:410px;width:200px;height:50px;";
+      e_ver_text.innerHTML = VERSION_TEXT;
+      e_div.appendChild(e_ver_text);
+      
+      document.body.appendChild(e_div);
+    }
+
+    // ==========
+    // ゲーム終了画面生成
+    // ==========
+    function crtGameFinishHtml(isWin) {
+      console.log("crtGameFinishHtml");
+
+      // プレイヤーと敵の要素を生成
+      let e_div = document.createElement("div");
+      e_div.setAttribute("id", "start_div");
+      e_div.style.cssText = 'background-image: url("' + IMG_BASE_PATH + WIN_BG_FILENAME + '");width:600px;height:600px;';
+
+      // Effの要素を生成
+      let e_div_eff = document.createElement("div");
+      
+      // アニメーション用のプレイヤーを生成
+      player = player.clone();
+
+      // アニメーション用の敵を生成
+      let enemy = playerData.getStage().getAIPlayerArr()[0];
+
+      // アニメーション用のレベルを設定
+      if (isWin) {
+        player.level = FINISH_START_OPPAI_LEVEL;
+        enemy.level = FINISH_END_OPPAI_LEVEL;
+      } else {
+        player.level = FINISH_END_OPPAI_LEVEL;
+        enemy.level = FINISH_START_OPPAI_LEVEL;
+      }
+
+      // 要素を追加
+      document.body.appendChild(e_div);
+      document.body.appendChild(e_div_eff);
+
+      // プレイヤーと敵のアニメーションを描画する
+      let frame = 0;
+      let finishIntervalTimer = window.setInterval(function(){
+        // プレイヤーと敵の要素を全消去
+        e_div.innerHTML = "";
+
+        let e_player = "";
+        let e_enemy = "";
+
+        if (isWin) {
+          player.level += 1;
+          e_player = crtTargetPreviewHtml(player, PREVIEW_X, PREVIEW_Y, STAT_HISSATU);
+
+          enemy.level -= 1;
+          e_enemy = crtTargetPreviewHtml(enemy, PREVIEW_X + FINISH_CHARA_INTERVAL_W, PREVIEW_Y, STAT_DIE);
+        } else {
+          player.level -= 1;
+          e_player = crtTargetPreviewHtml(player, PREVIEW_X, PREVIEW_Y, STAT_DIE);
+
+          enemy.level += 1;
+          e_enemy = crtTargetPreviewHtml(enemy, PREVIEW_X + FINISH_CHARA_INTERVAL_W, PREVIEW_Y, STAT_HISSATU);
+        }
+
+        e_div.appendChild(e_player);
+        e_div.appendChild(e_enemy);
+
+        frame++;
+
+        // 指定回数で音声再生
+        // 攻撃側の攻撃の声 ⇒ 被弾側のダメージの声の繰り返し ⇒ 被弾側の死亡の声
+        if (frame == FINISH_HISSATU_AUDIO_FRAME_NUM) {
+          if (isWin) {
+            playAudio(player.character + "/" + AUDIO_NAME_HISSATU);
+          } else {
+            playAudio(enemy.character + "/" + AUDIO_NAME_HISSATU);
+          }
+        } else if (FINISH_HISSATU_AUDIO_FRAME_NUM < frame && frame % FINISH_DAMAGE_AUDIO_FRAME_NUM == 0) {
+          if (isWin) {
+            playAudio(enemy.character + "/" + AUDIO_NAME_DAMAGE);
+          } else {
+            playAudio(player.character + "/" + AUDIO_NAME_DAMAGE);
+          }
+        } else if (frame == FINISH_ANIME_FRAME_NUM - 1) {
+          if (isWin) {
+            playAudio(enemy.character + "/" + AUDIO_NAME_DIE);
+          } else {
+            playAudio(player.character + "/" + AUDIO_NAME_DIE);
+          }
+        }
+
+        // 指定回数繰り返したらボタンを表示
+        if (FINISH_ANIME_FRAME_NUM < frame) {
+          // 見出し
+          let e_p = document.createElement("p");
+          e_p.style.cssText = "margin-left:50px;";
+          if (isWin) {
+            e_p.innerHTML = "ステージクリア StageClear!!";
+          } else {
+            e_p.innerHTML = "ゲームオーバー GameOver!!";
+          }
+          e_div.appendChild(e_p);
+
+          // ボタン
+          let e_input = document.createElement("input");
+          e_input.setAttribute("id", "start_btn");
+          e_input.setAttribute("type", "button");
+          e_input.setAttribute("value", "RESTART");
+          e_input.setAttribute("onclick", "playAudio(AUDIO_NAME_SELECT);crtSelectStageHtml();");
+          e_input.style.cssText = "margin-left:50px;width:200px;";
+          e_div.appendChild(e_input);
+
+          // ==================================================
+          // バナー
+          // 削除禁止でお願いします。
+          // ==================================================
+          let e_banner_div = document.createElement("div");
+          e_banner_div.style.cssText = "position: absolute;left:300px;top:20px;";
+          let e_banner_a = document.createElement("a");
+          e_banner_a.setAttribute("href", "https://kyusyudrain.com");
+          e_banner_a.setAttribute("target", "_blank");
+          e_banner_div.appendChild(e_banner_a);
+          let e_banner_img = document.createElement("img");
+          e_banner_img.setAttribute("src", IMG_BASE_PATH + BANNER_SRC);
+          e_banner_a.appendChild(e_banner_img);
+          e_div.appendChild(e_banner_div);
+
+          // ==================================================
+          // アフィリエイト
+          // 削除禁止でお願いします。
+          // ==================================================
+          let e_aff = document.createElement("div");
+          e_aff.style.cssText = "position: absolute;left:600px;top:200px;";
+
+          let e_aff_1 = document.createElement("ins");
+          e_aff_1.setAttribute("class", "dmm-widget-placement");
+          e_aff_1.setAttribute("data-id", "6f23dcff714590e5f627891db5734773");
+          e_aff_1.style.cssText = "background:transparent";
+
+          let e_aff_2 = document.createElement("script");
+          e_aff_2.setAttribute("src", "https://widget-view.dmm.co.jp/js/placement.js");
+          e_aff_2.setAttribute("class", "dmm-widget-scripts");
+          e_aff_2.setAttribute("data-id", "6f23dcff714590e5f627891db5734773");
+
+          e_aff.appendChild(e_aff_1);
+          e_aff.appendChild(e_aff_2);
+          e_div.appendChild(e_aff);
+
+          clearInterval(finishIntervalTimer);
+        }
+      }, FINISH_INTERVAL_TIME);
+
+      // Effのアニメーションを描画する
+      let frame_eff = 0;
+      let finishEffIntervalTimer = window.setInterval(function(){
+        // Effの要素を全消去
+        e_div_eff.innerHTML = "";
+
+        let e_eff = document.createElement("img");
+
+        if (isWin) {
+          e_eff.setAttribute("src", player.attack_gif.getSrc());
+          e_eff.style.cssText = "position: absolute;left: " + (PREVIEW_X + FINISH_CHARA_INTERVAL_W) +  "px;top: " + (PREVIEW_Y) +  "px;scale: " + (1) +  ";transform: rotate(" + (0 * Math.PI / 180) + "rad);";
+        } else {
+          e_eff.setAttribute("src", enemy.attack_gif.getSrc());
+          e_eff.style.cssText = "position: absolute;left: " + (PREVIEW_X) +  "px;top: " + (PREVIEW_Y) +  "px;scale: " + (1) +  ";transform: rotate(" + (0 * Math.PI / 180) + "rad);";
+        }
+
+        e_div_eff.appendChild(e_eff);
+
+        frame_eff++;
+
+        // 指定回数繰り返したらボタンを表示
+        if (((FINISH_INTERVAL_TIME * FINISH_ANIME_FRAME_NUM) / FINISH_EFF_INTERVAL_TIME) < frame_eff) {
+          e_div_eff.innerHTML = "";
+
+          clearInterval(finishEffIntervalTimer);
+        }
+      }, FINISH_EFF_INTERVAL_TIME);
+    }
+    
+    // ==========
+    // プレイヤープレビュー画面生成
+    // ==========
+    function crtTargetPreviewHtml(target, x, y, viewStat) {
+      // プレイヤーをプレビュー状態に設定
+      target.x = x;
+      target.y = y;
+      target.direction = -90 * Math.PI / 180;
+      target.stat = viewStat;
+      
+      let e_div = document.createElement("div");
+      e_div.setAttribute("id", "player_preview_div");
+      
+      // 体を描画(rotateでズレるので位置は手動で設定する)
+      let e_body = document.createElement("img");
+      e_body.setAttribute("src", IMG_BASE_PATH + target.character + "/" + target.stat + ".png");
+      e_body.style.cssText = "position: absolute;left: " + target.x + "px;top: " + target.y + "px;transform: rotate(" + target.direction + "rad);";
+      e_div.appendChild(e_body);
+      
+      // おっぱいの描画位置を設定
+      let dis = Math.sqrt(Math.pow(OPPAI_X, 2) + Math.pow(OPPAI_Y, 2));
+      let oppai_x_left  = target.x - dis * Math.sin(target.direction);
+      let oppai_x_right = target.x + dis * Math.sin(target.direction);
+      let oppai_y_left  = target.y + dis * Math.cos(target.direction);
+      let oppai_y_right = target.y - dis * Math.cos(target.direction);
+      
+      // 女体レベルでおっぱい描画倍率を設定
+      let scale = target.level * OPPAI_SCALE_SIZE;
+      
+      // 最大サイズ以上は倍率を上げない
+      if (MAX_VIEW_LEVEL < target.level) {
+        scale = MAX_VIEW_LEVEL * OPPAI_SCALE_SIZE;
+      }
+      if (target.level < 0) {
+        scale = 0;
+      }
+      
+      // おっぱいを描画(rotateでズレるので位置は手動で設定する)
+      let e_oppai_left = document.createElement("img");
+      e_oppai_left.setAttribute("src", IMG_BASE_PATH + target.oppai_type + "/l" + ".png");
+      e_oppai_left.style.cssText = "position: absolute;left: " + (x + 135) +  "px;top: " + 238 +  "px;scale: " + scale +  ";transform: rotate(" + target.direction + "rad);";
+      e_div.appendChild(e_oppai_left);
+      
+      let e_oppai_right = document.createElement("img");
+      e_oppai_right.setAttribute("src", IMG_BASE_PATH + target.oppai_type + "/r" + ".png");
+      e_oppai_right.style.cssText = "position: absolute;left: " + (x + 160) + "px;top: " + 238 +  "px;scale: " + scale +  ";transform: rotate(" + target.direction + "rad);";
+      e_div.appendChild(e_oppai_right);
+      
+      return e_div;
+    }
+    
+    // ==========
+    // 音声再生
+    // ==========
+    function playAudio(filename) {
+      let audio = document.getElementById(filename);
+      
+      // 存在しない場合は何もしない
+      if (audio == null || audio == "undefined") {
+        return;
+      }
+      
+      audio.play();
+    }
+    
+    // ==========
+    // 音声プリロード
+    // ==========
+    function preLoadAudio(filename) {
+      let audio = document.getElementById(filename);
+      
+      // 既に存在する場合は何もしない
+      if (audio != null && audio != "undefined") {
+        return;
+      }
+      
+      audio = document.createElement("audio");
+      audio.setAttribute("id", filename);
+      audio.src = AUDIO_BASE_PATH + filename;
+      
+      document.body.appendChild(audio);
+    }
+
+    // ==========
+    // 敵が全員非表示か判定
+    // ==========
+    function isAllEnemyNotDraw() {
+      for (let i = 0;i < playerAiArr.length;i++) {
+        if (playerAiArr[i].stat != STAT_NOT_DRAW) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    // ==========
+    // 敵が全員死亡or非表示か判定
+    // ==========
+    function isAllEnemyDieOrNotDraw() {
+      for (let i = 0;i < playerAiArr.length;i++) {
+        if (!(playerAiArr[i].stat == STAT_DIE || playerAiArr[i].stat == STAT_NOT_DRAW)) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+    
+    // ==========
+    // キャラクター選択画面生成
+    // ==========
+    function crtSelectCharHtml(pageIdx) {
+      // キャンバスを非表示
+      let e_canvas = document.getElementById("game");
+      e_canvas.style.display = "none";
+      
+      // 開始画面が存在する場合は削除
+      let start_div = document.getElementById("start_div");
+      if (start_div != null && start_div != "undefined") {
+        start_div.remove();
+      }
+      
+      // キャラクター画像はデフォルトが右が頭なので、上を頭にする
+      let rad = -90 * Math.PI / 180;
+      
+      let e_div = document.createElement("div");
+      e_div.setAttribute("id", "start_div");
+      e_div.style.cssText = 'background-image: url("' + IMG_BASE_PATH + SELECT_CHARACTER_BG_FILENAME + '");width:600px;height:600px;';
+      
+      for (let i = pageIdx;i < playerData.enableCharacterNum;i++) {
+        // キャラクター画像
+        let w_character = 150;
+        let x_character = 20 + ((w_character + 2) * i);
+        let y_character = 150;
+        
+        let e_body = document.createElement("img");
+        e_body.setAttribute("src", IMG_BASE_PATH + "character_" + String(i + 1) + "/" + "preview" + ".png");
+        e_body.style.cssText = "position: absolute;left: " + x_character + "px;top: " + y_character + "px;transform: rotate(" + rad + "rad);" + "width:" + w_character + "px;";
+        e_div.appendChild(e_body);
+        
+        // ボタン
+        let x_btn = 0 + ((w_character + 5) * i) + 40;
+        let y_btn = 300;
+        
+        let e_input = document.createElement("input");
+        e_input.setAttribute("type", "button");
+        e_input.setAttribute("value", "PLAY START");
+        e_input.setAttribute("onclick", "playAudio(AUDIO_NAME_START);execGame(" + String(i + 1) + ");");
+        e_input.style.cssText = "position: absolute;left: " + x_btn + "px;top: " + y_btn + "px;width:100px;height:30px;";
+        e_div.appendChild(e_input);
+        
+        // ページネーションボタン
+        // キャラクター保持数が前ページまでのキャラクター表示数を上回っている場合、表示する
+        if ((pageIdx + 1) * VIEW_1PAGE_CHARACTER_NUM < playerData.enableCharacterNum) {
+          let e_input_next = document.createElement("input");
+          e_input_next.setAttribute("type", "button");
+          e_input_next.setAttribute("value", "NEXT >>");
+          e_input_next.setAttribute("onclick", "playAudio(AUDIO_NAME_SELECT);pageNation(" + String(pageIdx + 1) + ");");
+          e_input_next.style.cssText = "position: absolute;left:500px;top:100px;width:100px;height:30px;";
+          e_div.appendChild(e_input_next);
+        }
+      }
+      
+      document.body.appendChild(e_div);
+    }
+    
+    // ==========
+    // キャラクター選択画面のページネーション
+    // ==========
+    function pageNation(pageIdx) {
+      if (pageIdx * VIEW_1PAGE_CHARACTER_NUM < playerData.enableCharacterNum) {
+        // キャラクター保持数が前ページまでのキャラクター表示数を上回っている場合、指定されたページ
+        crtSelectCharHtml(pageIdx);
+      } else {
+        // そうでない場合、初めのページ
+        crtSelectCharHtml(0);
+      }
+    }
+    
+    // ==========
+    // Cookieをロード
+    // localstrageを利用する
+    // ==========
+    function loadCookie(key) {
+      let value = window.localStorage.getItem(key);
+      if (value == null) {
+        return "";
+      }
+
+      return value;
+    }
+    
+    // ==========
+    // Cookieを保存
+    // localstrageを利用する
+    // ==========
+    function saveCookie(key, value) {
+      window.localStorage.setItem(key, value);
+    }
+    
+    // ==========
+    // ステージ選択画面生成
+    // ==========
+    function crtSelectStageHtml() {
+      // キャンバスを非表示
+      let e_canvas = document.getElementById("game");
+      e_canvas.style.display = "none";
+      
+      // 開始画面が存在する場合は削除
+      let start_div = document.getElementById("start_div");
+      if (start_div != null && start_div != "undefined") {
+        start_div.remove();
+      }
+      
+      // クリア済みステージ数を取得
+      let clearStageNum = playerData.clearStageNum;
+      
+      // クリア済みステージ+1だけ表示する
+      // 最大ステージ数の場合は+1しない
+      let viewStageNum = clearStageNum + 1;
+      if (MAX_STAGE_NUM < viewStageNum) {
+        viewStageNum = MAX_STAGE_NUM;
+      }
+      
+      let e_div = document.createElement("div");
+      e_div.setAttribute("id", "start_div");
+      e_div.style.cssText = 'background-image: url("' + IMG_BASE_PATH + SELECT_STAGE_BG_FILENAME + '");width:600px;height:600px;';
+      
+      for (let i = 0;i < viewStageNum;i++) {
+        // ステージ画像
+        let w_stage = 100;
+        let x_stage = 20 + ((w_stage + 20) * i);
+        let y_stage = 150;
+        
+        let e_body = document.createElement("img");
+        e_body.setAttribute("src", IMG_BASE_PATH + "stage_" + String(i + 1) + ".png");
+        e_body.style.cssText = "position: absolute;left: " + x_stage + "px;top: " + y_stage + "px;" + "width:" + w_stage + "px;";
+        e_div.appendChild(e_body);
+        
+        // ボタン
+        let x_btn = 20 + ((w_stage + 20) * i) + 0;
+        let y_btn = 260;
+        
+        let e_input = document.createElement("input");
+        e_input.setAttribute("type", "button");
+        e_input.setAttribute("value", "PLAY START");
+        // 選択されたステージを設定してキャラクター選択画面に遷移
+        e_input.setAttribute("onclick", "playAudio(AUDIO_NAME_SELECT);playerData.setSelectedStage(" + String(i + 1) + ");crtSelectCharHtml(0);");
+        e_input.style.cssText = "position: absolute;left: " + x_btn + "px;top: " + y_btn + "px;width:100px;height:30px;";
+        e_div.appendChild(e_input);
+      }
+      
+      document.body.appendChild(e_div);
+    }
+    
+    // ==========
+    // ctxで改行表示する
+    // https://teratail.com/questions/158564
+    // ==========
+    function fillTextLine (context, text, x, y) {
+      let textList = text.split('\n');
+      let lineHeight = context.measureText("あ").width;
+      textList.forEach(function(text, i) {
+        context.fillText(text, x, y+lineHeight*i);
+      });
+    };
+
+    // ==========
+    // ステージに応じたボスプレイヤーを生成
+    // ==========
+    function crtStageBossPlayer(stageNo) {
+      let player = new AIPlayer(FIELD_WIDTH * 3 / 4, FIELD_HEIGHT / 2, PLAYER_W, PLAYER_H, "character_2", "oppai_2", 17, 17, true);
+      
+      switch(stageNo) {
+        case 1:
+          player = new AIPlayer(FIELD_WIDTH * 3 / 4, FIELD_HEIGHT / 2, PLAYER_W, PLAYER_H, "character_2", "oppai_2", 17, 17, true);
+          break;
+        case 2:
+          player = new AIPlayer(FIELD_WIDTH * 3 / 4, FIELD_HEIGHT / 2, PLAYER_W, PLAYER_H, "character_3", "oppai_2", 14, 14, true);
+          break;
+        case 3:
+          player = new AIPlayer(FIELD_WIDTH * 3 / 4, FIELD_HEIGHT / 2, PLAYER_W, PLAYER_H, "character_4", "oppai_2", 30, 30, true);
+          break;
+        case 4:
+          player = new AIPlayer(FIELD_WIDTH * 3 / 4, FIELD_HEIGHT / 2, PLAYER_W, PLAYER_H, "character_1", "oppai_2", 17, 17, true);
+          break;
+        default:
+          // ステージ1の値を設定
+          player = new AIPlayer(FIELD_WIDTH * 3 / 4, FIELD_HEIGHT / 2, PLAYER_W, PLAYER_H, "character_2", "oppai_2", 17, 17, true);
+      }
+
+      return player;
+    }
+
+    // ==========
+    // 番号に応じたプレイヤーを生成
+    // ==========
+    function crtStagePlayer(no) {
+      let player = new Player(FIELD_WIDTH / 3, FIELD_HEIGHT / 2, PLAYER_W, PLAYER_H, "character_1", "oppai_2", 17, 17);
+      
+      switch(no) {
+        case 1:
+          player = new Player(FIELD_WIDTH / 3, FIELD_HEIGHT / 2, PLAYER_W, PLAYER_H, "character_1", "oppai_2", 17, 17);
+          break;
+        case 2:
+          player = new Player(FIELD_WIDTH / 3, FIELD_HEIGHT / 2, PLAYER_W, PLAYER_H, "character_2", "oppai_2", 17, 17);
+          break;
+        case 3:
+          player = new Player(FIELD_WIDTH / 3, FIELD_HEIGHT / 2, PLAYER_W, PLAYER_H, "character_3", "oppai_2", 14, 14);
+          break;
+        case 4:
+          player = new Player(FIELD_WIDTH / 3, FIELD_HEIGHT / 2, PLAYER_W, PLAYER_H, "character_4", "oppai_2", 30, 30);
+          break;
+        default:
+          // no1の値を設定
+          player = new Player(FIELD_WIDTH / 3, FIELD_HEIGHT / 2, PLAYER_W, PLAYER_H, "character_1", "oppai_2", 17, 17);
+      }
+
+      return player;
+    }
+  </script>
+</body>
+</html>
